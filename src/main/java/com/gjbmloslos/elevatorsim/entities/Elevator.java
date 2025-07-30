@@ -7,17 +7,16 @@ import java.util.logging.Logger;
 public class Elevator {
     private int shaft;
     private int floor;
-    private double speed;
     private boolean goingUp;
+    private static double speed;
     private static int capacity;
     private static int maxFloor;
 
     private static final Logger logger = Logger.getLogger(Elevator.class.getName());
 
-    public Elevator(int shaft, int floor, double speed, boolean goingUp) {
+    public Elevator(int shaft, int floor, boolean goingUp) {
         this.shaft = shaft;
         this.floor = floor;
-        this.speed = speed;
         this.goingUp = goingUp;
     }
 
@@ -121,8 +120,8 @@ public class Elevator {
         return speed;
     }
 
-    public void setSpeed(double speed) {
-        this.speed = speed;
+    public static void setSpeed(double speed) {
+        Elevator.speed = speed;
     }
 
 }

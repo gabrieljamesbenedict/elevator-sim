@@ -18,9 +18,11 @@ public class HelloApplication extends Application {
         stage.setScene(scene);
         stage.show();
         Person person = new Person(1,"Student",1,5);
-        Elevator elevator = new Elevator(1,1,10,true);
+        Elevator elevator = new Elevator(1,1,true);
         int maxFloor = 10;
         int maxCapacity = 10;
+        double speed = 20;
+        Elevator.setSpeed(speed);
         Elevator.setMaxFloor(maxFloor);
         Elevator.setCapacity(maxCapacity);
     }
