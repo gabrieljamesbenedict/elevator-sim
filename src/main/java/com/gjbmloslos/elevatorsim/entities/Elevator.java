@@ -1,127 +1,66 @@
 package com.gjbmloslos.elevatorsim.entities;
 
+import com.gjbmloslos.elevatorsim.services.ElevatorComponent;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.logging.Logger;
 
-public class Elevator {
-    private int shaft;
-    private int floor;
-    private boolean goingUp;
-    private static double speed;
-    private static int capacity;
-    private static int maxFloor;
+public class Elevator implements ElevatorComponent {
 
-    private static final Logger logger = Logger.getLogger(Elevator.class.getName());
+    private int capacity;
+    private int currentFloor;
 
-    public Elevator(int shaft, int floor, boolean goingUp) {
-        this.shaft = shaft;
-        this.floor = floor;
-        this.goingUp = goingUp;
+    private ArrayList<Person> personList;
+
+    public Elevator(int capacity, int currentFloor) {
+        this.capacity = capacity;
+        this.currentFloor = currentFloor;
+        this.personList = new ArrayList<>();
     }
 
-    private ArrayList<Person> persons = new ArrayList<>();
-
-    public void move(){
-        if(goingUp){
-            floor++;
-            if(floor==maxFloor){
-                goingUp = false;
-                logger.fine("Elevator direction change, going up");
-            }
-        }else{
-            floor--;
-            if(floor==1){
-                goingUp = true;
-                logger.fine("Elevator direction change, going down");
-            }
-        }
-        dropOff();
-    }
-
-    public void pickup(Person person){
-        if(persons.size()<capacity){
-            persons.add(person);
-        }else{
-            logger.fine("Elevator is full capacity");
-        }
-    }
-
-    public boolean hasPersonWithDestBelow(){
-        for(Person person:persons){
-            if(person.getDestination()<floor){
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public boolean hasPersonWithDestAbove(){
-        for(Person person:persons){
-            if(person.getDestination()>floor){
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public void dropOff() {
-        Iterator<Person> iterator = persons.iterator();
-        while (iterator.hasNext()) {
-            Person person = iterator.next();
-            if (person.getDestination() == floor) {
-                iterator.remove();
-                logger.fine("Dropped off person " + person.getId() + " at " + floor);
-            }
-        }
-    }
-
-    public static int getCapacity() {
+    public int getCapacity() {
         return capacity;
     }
 
-    public static void setCapacity(int capacity) {
-        Elevator.capacity = capacity;
+    public void setCapacity(int capacity) {
+        this.capacity = capacity;
     }
 
-    public int getFloor() {
-        return floor;
+    public int getCurrentFloor() {
+        return currentFloor;
     }
 
-    public void setFloor(int floor) {
-        this.floor = floor;
+    public void setCurrentFloor(int currentFloor) {
+        this.currentFloor = currentFloor;
     }
 
-    public boolean isGoingUp() {
-        return goingUp;
+    public ArrayList<Person> getPersonList() {
+        return personList;
     }
 
-    public void setGoingUp(boolean goingUp) {
-        this.goingUp = goingUp;
+    public void setPersonList(ArrayList<Person> personList) {
+        this.personList = personList;
     }
 
-    public int getShaft() {
-        return shaft;
+    @Override
+    public void moveUp() {
+        currentFloor++;
     }
 
-    public void setShaft(int shaft) {
-        this.shaft = shaft;
+    @Override
+    public void moveDown() {
+        currentFloor--;
     }
 
-    public static int getMaxFloor() {
-        return maxFloor;
+    @Override
+    public void pickUp(Person person) {
+        personList.add(person);
     }
 
-    public static void setMaxFloor(int maxFloor) {
-        Elevator.maxFloor = maxFloor;
-    }
-
-    public double getSpeed() {
-        return speed;
-    }
-
-    public static void setSpeed(double speed) {
-        Elevator.speed = speed;
+    @Override
+    public void dropOff(Person person) {
+        personList.remove(person);
     }
 
 }

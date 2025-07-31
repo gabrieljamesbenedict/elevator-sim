@@ -1,41 +1,22 @@
 package com.gjbmloslos.elevatorsim.entities;
 
 public class Person {
+
     private int id;
     private String role;
-    private int currFloor;
+    private int currentFloor;
     private int destination;
 
-    public Person(int id, String role, int currFloor, int destination) {
+    public Person(int id, String role, int currentFloor, int destination) {
         this.id = id;
         this.role = role;
-        this.currFloor = currFloor;
+        this.currentFloor = currentFloor;
         this.destination = destination;
     }
 
-
-    public int getDestination() {
-        return destination;
-    }
-
-    public void setDestination(int destination) {
-        this.destination = destination;
-    }
-
-    public int getCurrFloor() {
-        return currFloor;
-    }
-
-    public void setCurrFloor(int currFloor) {
-        this.currFloor = currFloor;
-    }
-
-    public String getRole() {
-        return role;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
+    enum PersonRole {
+        STUDENT,
+        FACULTY
     }
 
     public int getId() {
@@ -46,4 +27,27 @@ public class Person {
         this.id = id;
     }
 
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public int getCurrentFloor() {
+        return currentFloor;
+    }
+
+    public void setCurrentFloor(int currentFloor) {
+        this.currentFloor = currentFloor;
+    }
+
+    public int getDestination() {
+        return destination;
+    }
+
+    public void setDestination(int destination) {
+        this.destination = destination;
+    }
 }
