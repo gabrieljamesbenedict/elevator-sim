@@ -1,17 +1,22 @@
 package com.gjbmloslos.elevatorsim.entities;
 
 import com.gjbmloslos.elevatorsim.components.ElevatorComponent;
+import com.gjbmloslos.elevatorsim.constants.PersonRole;
 
 import java.util.ArrayList;
 
 public class Elevator implements ElevatorComponent {
 
+    private int id;
+    private PersonRole role;
     private int capacity;
     private int currentFloor;
     private Direction direction;
     private ArrayList<Person> personList;
 
-    public Elevator(int capacity, int currentFloor) {
+    public Elevator(int id, PersonRole role, int capacity, int currentFloor) {
+        this.id = id;
+        this.role = role;
         this.capacity = capacity;
         this.currentFloor = currentFloor;
         this.direction = Direction.UP;
@@ -21,6 +26,22 @@ public class Elevator implements ElevatorComponent {
     public enum Direction {
         UP,
         DOWN
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public PersonRole getRole() {
+        return role;
+    }
+
+    public void setRole(PersonRole role) {
+        this.role = role;
     }
 
     public int getCapacity() {
