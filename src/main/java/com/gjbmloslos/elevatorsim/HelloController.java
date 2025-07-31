@@ -1,12 +1,15 @@
 package com.gjbmloslos.elevatorsim;
 
 import com.gjbmloslos.elevatorsim.constants.ElevatorStats;
+import com.gjbmloslos.elevatorsim.constants.PersonRole;
 import com.gjbmloslos.elevatorsim.constants.SimulationConfig;
 import com.gjbmloslos.elevatorsim.entities.Elevator;
 import com.gjbmloslos.elevatorsim.entities.Person;
+import com.gjbmloslos.elevatorsim.manager.PersonSpawnManager;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -19,8 +22,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class HelloController {
 
-    AtomicInteger tickNum;
-    ArrayList<ArrayList<Person>> floorList;
+    PersonSpawnManager spawnManager;
+
+    HBox[] floors;
     Pane[][] elevatorPanes;
     Elevator[] elevators;
 
@@ -33,7 +37,7 @@ public class HelloController {
     @FXML
     public void initialize () {
 
-        tickNum = new AtomicInteger(0);
+        spawnManager = new PersonSpawnManager();
 
         generateFloors();
         generateElevators();
@@ -49,8 +53,8 @@ public class HelloController {
         int elevatorSize = 75;
         int boxWidth = elevatorAmount * elevatorSize;
 
-        floorList = new ArrayList<>();
         elevatorPanes = new Pane[SimulationConfig.BUILDING_MAX_FLOOR][elevatorAmount];
+        floors = new HBox[floorsAmount];
 
         for (int i = 0; i < floorsAmount; i++) {
             HBox floor = new HBox();
@@ -61,6 +65,8 @@ public class HelloController {
             floor.prefWidth(600);
             BackgroundFill fill = new BackgroundFill(Color.WHITESMOKE, CornerRadii.EMPTY, Insets.EMPTY);
             floor.setBackground(new Background(fill));
+            floor.setAlignment(Pos.CENTER_LEFT);
+            floor.setSpacing(10);
 
             HBox innerBox = new HBox();
             innerBox.setMinSize(boxWidth, height);
@@ -71,12 +77,7 @@ public class HelloController {
             innerBox.setSpacing(5);
             for (int j = 0; j < elevatorAmount; j++) {
                 Pane pane = new Pane();
-                pane.setMinHeight(elevatorSize);
-                pane.setPrefHeight(elevatorSize);
-                pane.setMaxHeight(elevatorSize);
-                pane.setMinWidth(elevatorSize);
-                pane.setPrefWidth(elevatorSize);
-                pane.setMaxWidth(elevatorSize);
+                setPaneDimension(pane, elevatorSize);
                 BackgroundFill elevFill = new BackgroundFill(Color.GRAY, CornerRadii.EMPTY, Insets.EMPTY);
                 pane.setBackground(new Background(elevFill));
                 elevatorPanes[floorsAmount-i-1][j] = pane;
@@ -86,7 +87,7 @@ public class HelloController {
 
             // Add the floor to the VBox and the floorList
             building.getChildren().add(floor);
-            floorList.add(new ArrayList<Person>());
+            floors[i] = floor;
         }
 
     }
@@ -104,36 +105,28 @@ public class HelloController {
 
         for (int i = 0; i < facultyElevators; i++) {
             Pane pane = elevatorPanes[0][i];
-            pane.setMinHeight(elevatorSize);
-            pane.setPrefHeight(elevatorSize);
-            pane.setMaxHeight(elevatorSize);
-            pane.setMinWidth(elevatorSize);
-            pane.setPrefWidth(elevatorSize);
-            pane.setMaxWidth(elevatorSize);
+            setPaneDimension(pane, elevatorSize);
             BackgroundFill elevFill = new BackgroundFill(Color.LIGHTSALMON, CornerRadii.EMPTY, Insets.EMPTY);
             pane.setBackground(new Background(elevFill));
-            elevatorPanes[0][i] = pane;
-            elevators[i] = new Elevator(elevatorCapacity, startingFloor);
+            elevators[i] = new Elevator(i, PersonRole.FACULTY, elevatorCapacity, startingFloor);
         }
 
         for (int i = facultyElevators; i < elevatorAmount; i++) {
             Pane pane = elevatorPanes[0][i];
-            pane.setMinHeight(elevatorSize);
-            pane.setPrefHeight(elevatorSize);
-            pane.setMaxHeight(elevatorSize);
-            pane.setMinWidth(elevatorSize);
-            pane.setPrefWidth(elevatorSize);
-            pane.setMaxWidth(elevatorSize);
+            setPaneDimension(pane, elevatorSize);
             BackgroundFill elevFill = new BackgroundFill(Color.LIGHTBLUE, CornerRadii.EMPTY, Insets.EMPTY);
             pane.setBackground(new Background(elevFill));
-            elevatorPanes[0][i] = pane;
-            elevators[i] = new Elevator(elevatorCapacity, startingFloor);
+            elevators[i] = new Elevator(i, PersonRole.STUDENT, elevatorCapacity, startingFloor);
         }
 
     }
 
     private void startSimulation () {
 
+        AtomicInteger tickNum = new AtomicInteger(0);
+        AtomicInteger spawnCooldown = new AtomicInteger(0);
+
+        final int spawnDelay = SimulationConfig.PERSON_SPAWN_DELAY;
         int facultyElevators = SimulationConfig.BUILDING_FACULTY_ELEVATOR_AMOUNT;
         int studentElevators = SimulationConfig.BUILDING_STUDENT_ELEVATOR_AMOUNT;
         int elevatorAmount = facultyElevators + studentElevators;
@@ -144,31 +137,57 @@ public class HelloController {
             int currentTick = tickNum.incrementAndGet();
             Platform.runLater(()-> tickCounter.setText("Ticks: " + currentTick));
 
-            for (int i = 0; i < elevatorAmount; i++) {
+            for (Elevator e : elevators) {
                 if (currentTick % speed == 0) {
-                    updateElevatorPosition(elevators, elevatorPanes, i, Color.GRAY);
-                    elevators[i].step(maxFloor);
-                    System.out.println("Elevator at floor " + elevators[i].getCurrentFloor() +
-                            ", direction: " + elevators[i].getDirection());
+                    updateElevatorPosition(elevators, elevatorPanes, e.getId(), Color.GRAY);
+                    e.step(maxFloor);
+                    System.out.println("Elevator " + e.getId() + " moved to floor:" + e.getCurrentFloor() +
+                            ", direction: " + e.getDirection());
                 }
+
+
+                updateElevatorPosition(elevators, elevatorPanes, e.getId(), e.getRole() == PersonRole.FACULTY? Color.LIGHTSALMON:Color.LIGHTBLUE);
             }
 
-            for (int i = 0; i < elevatorAmount; i++) {
-                updateElevatorPosition(elevators, elevatorPanes, i, i < facultyElevators? Color.LIGHTSALMON:Color.LIGHTBLUE);
+            int cooldown = spawnCooldown.decrementAndGet();
+            if (cooldown <= 0) {
+                Person person = spawnManager.spawn();
+                Pane pane = new Pane();
+                setPaneDimension(pane, 30);
+                updatePaneColor(pane, person.getRole() == PersonRole.FACULTY? Color.PINK:Color.CADETBLUE );
+                HBox currentFloor = floors[person.getCurrentFloor()];
+                Platform.runLater(() -> currentFloor.getChildren().add(pane));
+
+                spawnCooldown.set(spawnDelay);
+                System.out.println("Spawned Person " + person.getId() + " [" +person.getRole() + "] "
+                        + " at floor:" + person.getCurrentFloor() + " with destination:" + person.getDestination());
             }
+
         };
 
         ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
-        service.scheduleWithFixedDelay(tick, 0, 100, TimeUnit.MILLISECONDS);
+        service.scheduleWithFixedDelay(tick, 0, 200, TimeUnit.MILLISECONDS);
     }
 
     private void updateElevatorPosition(Elevator[] elevators, Pane[][] elevatorPanes, int elevatorIndex, Color color) {
         int elevatorFloor = elevators[elevatorIndex].getCurrentFloor();
         Pane pane = elevatorPanes[elevatorFloor][elevatorIndex];
 
+        updatePaneColor(pane, color);
+    }
+
+    private void updatePaneColor (Pane pane, Color color) {
         BackgroundFill elevFill = new BackgroundFill(color, CornerRadii.EMPTY, Insets.EMPTY);
         pane.setBackground(new Background(elevFill));
     }
 
+    private void setPaneDimension (Pane pane, int dimension) {
+        pane.setMinHeight(dimension);
+        pane.setPrefHeight(dimension);
+        pane.setMaxHeight(dimension);
+        pane.setMinWidth(dimension);
+        pane.setPrefWidth(dimension);
+        pane.setMaxWidth(dimension);
+    }
 
 }

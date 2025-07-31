@@ -1,22 +1,19 @@
 package com.gjbmloslos.elevatorsim.entities;
 
+import com.gjbmloslos.elevatorsim.constants.PersonRole;
+
 public class Person {
 
     private int id;
-    private String role;
+    private PersonRole role;
     private int currentFloor;
     private int destination;
 
-    public Person(int id, String role, int currentFloor, int destination) {
+    public Person(int id, PersonRole role, int currentFloor, int destination) {
         this.id = id;
         this.role = role;
         this.currentFloor = currentFloor;
         this.destination = destination;
-    }
-
-    enum PersonRole {
-        STUDENT,
-        FACULTY
     }
 
     public int getId() {
@@ -27,11 +24,11 @@ public class Person {
         this.id = id;
     }
 
-    public String getRole() {
+    public PersonRole getRole() {
         return role;
     }
 
-    public void setRole(String role) {
+    public void setRole(PersonRole role) {
         this.role = role;
     }
 
