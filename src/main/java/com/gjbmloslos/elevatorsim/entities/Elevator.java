@@ -1,22 +1,26 @@
 package com.gjbmloslos.elevatorsim.entities;
 
-import com.gjbmloslos.elevatorsim.services.ElevatorComponent;
+import com.gjbmloslos.elevatorsim.components.ElevatorComponent;
 
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.logging.Logger;
 
 public class Elevator implements ElevatorComponent {
 
     private int capacity;
     private int currentFloor;
-
+    private Direction direction;
     private ArrayList<Person> personList;
 
     public Elevator(int capacity, int currentFloor) {
         this.capacity = capacity;
         this.currentFloor = currentFloor;
+        this.direction = Direction.UP;
         this.personList = new ArrayList<>();
+    }
+
+    public enum Direction {
+        UP,
+        DOWN
     }
 
     public int getCapacity() {
@@ -35,12 +39,39 @@ public class Elevator implements ElevatorComponent {
         this.currentFloor = currentFloor;
     }
 
+    public Direction getDirection() {
+        return direction;
+    }
+
+    public void setDirection(Direction direction) {
+        this.direction = direction;
+    }
+
     public ArrayList<Person> getPersonList() {
         return personList;
     }
 
     public void setPersonList(ArrayList<Person> personList) {
         this.personList = personList;
+    }
+
+    @Override
+    public void step (int maxFloor) {
+        if (direction == Direction.UP) {
+            if (currentFloor < maxFloor - 1) {
+                moveUp();
+            } else {
+                direction = Direction.DOWN;
+                moveDown();
+            }
+        } else {
+            if (currentFloor > 0) {
+                moveDown();
+            } else {
+                direction = Direction.UP;
+                moveUp();
+            }
+        }
     }
 
     @Override
