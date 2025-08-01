@@ -82,8 +82,6 @@ public class HelloController {
             innerBox.setMinSize(boxWidth, height);
             innerBox.setPrefSize(boxWidth, height);
             innerBox.setMaxSize(boxWidth, height);
-            //BackgroundFill innerFill = new BackgroundFill(Color.LIGHTBLUE, CornerRadii.EMPTY, Insets.EMPTY);
-            //innerBox.setBackground(new Background(innerFill));
             innerBox.setSpacing(5);
             for (int j = 0; j < elevatorAmount; j++) {
                 Pane pane = new Pane();
@@ -138,6 +136,13 @@ public class HelloController {
         AtomicInteger tickNum = new AtomicInteger(0);
         AtomicInteger spawnCooldown = new AtomicInteger(0);
 
+        List<Elevator> idleElevators = new LinkedList<>();
+        List<Elevator> busyElevators = new LinkedList<>();
+
+        for (Elevator e : elevators) {
+            idleElevators.add(e);
+        }
+
         final int spawnDelay = SimulationConfig.PERSON_SPAWN_DELAY;
         int facultyElevators = SimulationConfig.BUILDING_FACULTY_ELEVATOR_AMOUNT;
         int studentElevators = SimulationConfig.BUILDING_STUDENT_ELEVATOR_AMOUNT;
@@ -150,6 +155,7 @@ public class HelloController {
             try {
                 int currentTick = tickNum.incrementAndGet();
                 Platform.runLater(()-> tickCounter.setText("Ticks: " + currentTick));
+
 
                 // Main Elevator Logic
                 for (Elevator e : elevators) {
@@ -171,6 +177,20 @@ public class HelloController {
                         });
                     }
                     currentLoad = e.getPersonList().size();
+
+                    // Idling Logic (Generic for all roles)
+                    if (e.getBusy() && e.getPersonList().isEmpty()) {
+                        boolean hasWaitingSameRole = Arrays.stream(floors)
+                                .anyMatch(f -> f.getPersonQueue().stream()
+                                        .anyMatch(p -> p.getRole() == e.getRole()));
+
+                        if (!hasWaitingSameRole) {
+                            e.setBusy(false);
+                            busyElevators.remove(e);
+                            idleElevators.add(e);
+                            System.out.println("Elevator " + e.getId() + " is now idle.");
+                        }
+                    }
 
 
                     if (e.getRole() == PersonRole.FACULTY) {
@@ -222,16 +242,8 @@ public class HelloController {
                         }
 
 
-                        // Search Logic
-                        boolean waiting = Arrays.stream(floors)
-                                .map(Floor::getPersonQueue)
-                                .anyMatch(q -> q.stream().anyMatch(
-                                        p -> p.getRole() == PersonRole.FACULTY
-                                ));
-
-
                         // Move Logic
-                        if (currentTick % speed == 0 && (!e.getPersonList().isEmpty() || waiting)) {
+                        if (currentTick % speed == 0 && (!e.getPersonList().isEmpty() || e.getBusy())) {
                             updateElevatorPosition(elevators, elevatorPanes, e.getId(), Color.GRAY);
                             e.step(maxFloor);
                             Color c = e.getRole() == PersonRole.FACULTY ? Color.LIGHTSALMON : Color.LIGHTBLUE;
@@ -289,16 +301,8 @@ public class HelloController {
                         }
 
 
-                        // Search Logic
-                        boolean waiting = Arrays.stream(floors)
-                                .map(Floor::getPersonQueue)
-                                .anyMatch(q -> q.stream().anyMatch(
-                                        p -> p.getRole() == PersonRole.STUDENT
-                                ));
-
-
                         // Move Logic
-                        if (currentTick % speed == 0 && (!e.getPersonList().isEmpty() || waiting)) {
+                        if (currentTick % speed == 0 && (!e.getPersonList().isEmpty() || e.getBusy())) {
                             updateElevatorPosition(elevators, elevatorPanes, e.getId(), Color.GRAY);
                             e.step(maxFloor);
                             Color c = e.getRole() == PersonRole.FACULTY ? Color.LIGHTSALMON : Color.LIGHTBLUE;
@@ -307,6 +311,7 @@ public class HelloController {
                         }
 
                     }
+
 
                 }
 
@@ -326,6 +331,17 @@ public class HelloController {
                     spawnCooldown.set(spawnDelay);
                     System.out.println("Spawned Person " + person.getId() + " [" +person.getRole() + "] "
                             + " at floor:" + person.getCurrentFloor() + " with destination:" + person.getDestination());
+
+                    List<Elevator> idleStudentElevators = idleElevators.stream()
+                            .filter(e -> e.getRole() == person.getRole())
+                            .toList();
+                    if (!idleStudentElevators.isEmpty()) {
+                        Elevator assigned = idleStudentElevators.getFirst();
+                        idleElevators.remove(assigned);
+                        busyElevators.add(assigned);
+                        assigned.setBusy(true);
+                        System.out.println("Elevator " + assigned.getId() + " assigned to Person " + person.getId());
+                    }
                 }
 
             } catch (Exception e) {
@@ -334,7 +350,7 @@ public class HelloController {
         };
 
         ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
-        service.scheduleWithFixedDelay(tick, 5000, 50, TimeUnit.MILLISECONDS);
+        service.scheduleWithFixedDelay(tick, 3000, 50, TimeUnit.MILLISECONDS);
     }
 
     private void updateElevatorPosition(Elevator[] elevators, Pane[][] elevatorPanes, int elevatorIndex, Color color) {

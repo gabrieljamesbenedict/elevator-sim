@@ -14,8 +14,8 @@ public class Elevator implements ElevatorComponent {
     private PersonRole role;
     private int capacity;
     private int currentFloor;
-    private
-    Direction direction;
+    private Direction direction;
+    private Boolean isBusy;
     private ArrayList<Person> personList;
 
     public Elevator(int id, PersonRole role, int capacity, int currentFloor) {
@@ -24,6 +24,7 @@ public class Elevator implements ElevatorComponent {
         this.capacity = capacity;
         this.currentFloor = currentFloor;
         this.direction = Direction.UP;
+        this.isBusy = false;
         this.personList = new ArrayList<>();
     }
 
@@ -57,6 +58,14 @@ public class Elevator implements ElevatorComponent {
 
     public void setCurrentFloor(int currentFloor) {
         this.currentFloor = currentFloor;
+    }
+
+    public Boolean getBusy() {
+        return isBusy;
+    }
+
+    public void setBusy(Boolean busy) {
+        isBusy = busy;
     }
 
     public Direction getDirection() {
