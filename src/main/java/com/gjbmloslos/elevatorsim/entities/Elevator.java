@@ -1,9 +1,12 @@
 package com.gjbmloslos.elevatorsim.entities;
 
 import com.gjbmloslos.elevatorsim.components.ElevatorComponent;
+import com.gjbmloslos.elevatorsim.constants.Direction;
 import com.gjbmloslos.elevatorsim.constants.PersonRole;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Queue;
 
 public class Elevator implements ElevatorComponent {
 
@@ -21,11 +24,6 @@ public class Elevator implements ElevatorComponent {
         this.currentFloor = currentFloor;
         this.direction = Direction.UP;
         this.personList = new ArrayList<>();
-    }
-
-    public enum Direction {
-        UP,
-        DOWN
     }
 
     public int getId() {

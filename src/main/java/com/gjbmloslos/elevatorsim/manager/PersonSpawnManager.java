@@ -17,7 +17,7 @@ public class PersonSpawnManager {
 
     public PersonSpawnManager () {
         r = new Random();
-        personList = new ArrayList<>();
+        this.personList = new ArrayList<>();
     }
 
     public Person spawn () {

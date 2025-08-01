@@ -1,32 +1,40 @@
 package com.gjbmloslos.elevatorsim;
 
+import com.gjbmloslos.elevatorsim.constants.Direction;
 import com.gjbmloslos.elevatorsim.constants.ElevatorStats;
 import com.gjbmloslos.elevatorsim.constants.PersonRole;
 import com.gjbmloslos.elevatorsim.constants.SimulationConfig;
 import com.gjbmloslos.elevatorsim.entities.Elevator;
+import com.gjbmloslos.elevatorsim.entities.Floor;
 import com.gjbmloslos.elevatorsim.entities.Person;
+import com.gjbmloslos.elevatorsim.manager.ElevatorManager;
 import com.gjbmloslos.elevatorsim.manager.PersonSpawnManager;
+import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.util.Duration;
 
-import java.util.ArrayList;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 
 public class HelloController {
 
     PersonSpawnManager spawnManager;
+    ElevatorManager elevatorManager;
 
-    HBox[] floors;
-    Pane[][] elevatorPanes;
+    Floor[] floors;
     Elevator[] elevators;
+    Pane[][] elevatorPanes;
 
     @FXML
     VBox building;
@@ -37,10 +45,12 @@ public class HelloController {
     @FXML
     public void initialize () {
 
-        spawnManager = new PersonSpawnManager();
-
         generateFloors();
         generateElevators();
+
+        spawnManager = new PersonSpawnManager();
+        elevatorManager = new ElevatorManager(elevators);
+
         startSimulation();
 
         System.out.println("HELLO WORLD");
@@ -54,19 +64,19 @@ public class HelloController {
         int boxWidth = elevatorAmount * elevatorSize;
 
         elevatorPanes = new Pane[SimulationConfig.BUILDING_MAX_FLOOR][elevatorAmount];
-        floors = new HBox[floorsAmount];
+        floors = new Floor[floorsAmount];
 
         for (int i = 0; i < floorsAmount; i++) {
-            HBox floor = new HBox();
+            HBox floorHBox = new HBox();
             int height = 75;
-            floor.setMinHeight(height);
-            floor.setPrefHeight(height);
-            floor.setMaxHeight(height);
-            floor.prefWidth(600);
+            floorHBox.setMinHeight(height);
+            floorHBox.setPrefHeight(height);
+            floorHBox.setMaxHeight(height);
+            floorHBox.prefWidth(600);
             BackgroundFill fill = new BackgroundFill(Color.WHITESMOKE, CornerRadii.EMPTY, Insets.EMPTY);
-            floor.setBackground(new Background(fill));
-            floor.setAlignment(Pos.CENTER_LEFT);
-            floor.setSpacing(10);
+            floorHBox.setBackground(new Background(fill));
+            floorHBox.setAlignment(Pos.CENTER_LEFT);
+            floorHBox.setSpacing(10);
 
             HBox innerBox = new HBox();
             innerBox.setMinSize(boxWidth, height);
@@ -83,11 +93,11 @@ public class HelloController {
                 elevatorPanes[floorsAmount-i-1][j] = pane;
                 innerBox.getChildren().add(pane);
             }
-            floor.getChildren().add(innerBox);
+            floorHBox.getChildren().add(innerBox);
 
             // Add the floor to the VBox and the floorList
-            building.getChildren().add(floor);
-            floors[i] = floor;
+            building.getChildren().add(floorHBox);
+            floors[floorsAmount-i-1] = new Floor(i, floorHBox);
         }
 
     }
@@ -123,6 +133,8 @@ public class HelloController {
 
     private void startSimulation () {
 
+        System.out.println("Starting simulation");
+
         AtomicInteger tickNum = new AtomicInteger(0);
         AtomicInteger spawnCooldown = new AtomicInteger(0);
 
@@ -132,41 +144,134 @@ public class HelloController {
         int elevatorAmount = facultyElevators + studentElevators;
         int maxFloor = SimulationConfig.BUILDING_MAX_FLOOR;
         int speed = ElevatorStats.ELEVATOR_SPEED;
+        int totalCapacity = ElevatorStats.ELEVATOR_MAX_CAPACITY;
 
         Runnable tick = () -> {
-            int currentTick = tickNum.incrementAndGet();
-            Platform.runLater(()-> tickCounter.setText("Ticks: " + currentTick));
+            try {
+                int currentTick = tickNum.incrementAndGet();
+                Platform.runLater(()-> tickCounter.setText("Ticks: " + currentTick));
 
-            for (Elevator e : elevators) {
-                if (currentTick % speed == 0) {
-                    updateElevatorPosition(elevators, elevatorPanes, e.getId(), Color.GRAY);
-                    e.step(maxFloor);
-                    System.out.println("Elevator " + e.getId() + " moved to floor:" + e.getCurrentFloor() +
-                            ", direction: " + e.getDirection());
+                // Main Elevator Logic
+                for (Elevator e : elevators) {
+                    Floor currentFloor = floors[e.getCurrentFloor()];
+                    Queue<Person> queue = currentFloor.getPersonQueue();
+                    int currentLoad;
+                    int maxLoad = e.getCapacity();
+                    int dest = e.getCurrentFloor();
+
+                    if (e.getRole() == PersonRole.FACULTY) {
+                        // FACULTY ELEVATORS
+
+
+                    } else {
+                        // STUDENT ELEVATORS
+
+
+                        // Drop off Logic
+                        List<Person> droppingOff = e.getPersonList()
+                                .stream()
+                                .filter(p -> p.getDestination() == e.getCurrentFloor())
+                                .toList();
+                        if (!droppingOff.isEmpty()) {
+                            droppingOff.forEach(p -> {
+                                e.dropOff(p);
+                                System.out.println("Elevator " + e.getId() + " dropped off Person " + p.getId() + ", Capacity:" + e.getPersonList().size() +"/"+e.getCapacity());
+                            });
+                        }
+                        currentLoad = e.getPersonList().size();
+
+
+                        // Pickup Logic
+                        int elevatorFloor = e.getCurrentFloor();
+                        if (!queue.isEmpty() && currentLoad < maxLoad) {
+                            if (queue.peek().getRole() == PersonRole.STUDENT) {
+                                Person peeked = queue.peek();
+
+                                boolean goingSameDirection = e.getDirection() == peeked.getDirection();
+                                boolean atElevatorTerminal = peeked.getCurrentFloor() == maxFloor-1 || peeked.getCurrentFloor() == 0;
+                                boolean changeDirection = e.getDirection()==Direction.UP? !hasWaitingAbove(e.getCurrentFloor(), floors)&&peeked.getDirection()==Direction.DOWN : !hasWaitingBelow(e.getCurrentFloor(), floors)&&peeked.getDirection()==Direction.UP;
+                                boolean hasPersonGoingThere = e.getPersonList().stream().anyMatch(p -> p.getDirection() == e.getDirection());
+                                if (goingSameDirection || atElevatorTerminal || (changeDirection && !hasPersonGoingThere)) {
+                                    Person person = queue.poll();
+                                    e.pickUp(person);
+                                    currentLoad++;
+                                    Platform.runLater(() -> currentFloor.getHbox().getChildren().remove(person.getPane()));
+                                    System.out.println("Elevator " + e.getId() + " picked up Person " + person.getId() + ", Capacity:" + currentLoad + "/" + e.getCapacity());
+                                    if (changeDirection) e.setDirection(e.getDirection() == Direction.UP? Direction.DOWN : Direction.UP);
+                                }
+
+                            } else if (queue.stream().anyMatch(p ->
+                                    p.getRole() == PersonRole.STUDENT
+                            )) {
+
+                                Iterator<Person> it = queue.iterator();
+                                while (it.hasNext()) {
+                                    Person person = it.next();
+                                    boolean isCorrectRole = person.getRole() == PersonRole.STUDENT;
+                                    boolean goingSameDirection = e.getDirection() == person.getDirection();
+                                    boolean atElevatorTerminal = person.getCurrentFloor() == maxFloor-1 || person.getCurrentFloor() == 0;
+                                    boolean changeDirection = e.getDirection()==Direction.UP? !hasWaitingAbove(e.getCurrentFloor(), floors)&&person.getDirection()==Direction.DOWN : !hasWaitingBelow(e.getCurrentFloor(), floors)&&person.getDirection()==Direction.UP;
+                                    boolean hasPersonGoingThere = e.getPersonList().stream().anyMatch(p -> p.getDirection() == e.getDirection());
+                                    if (isCorrectRole && (goingSameDirection || atElevatorTerminal || (changeDirection && !hasPersonGoingThere))) {
+                                        it.remove();
+                                        e.pickUp(person);
+                                        currentLoad++;
+                                        Platform.runLater(() -> currentFloor.getHbox().getChildren().remove(person.getPane()));
+                                        System.out.println("Elevator " + e.getId() + " picked up Person " + person.getId() + ", Capacity:" + currentLoad + "/" + e.getCapacity());
+                                        if (changeDirection) e.setDirection(e.getDirection() == Direction.UP? Direction.DOWN : Direction.UP);
+                                    }
+                                }
+
+                            }
+                        }
+
+
+                        // Search Logic
+                        boolean waiting = Arrays.stream(floors)
+                                .map(Floor::getPersonQueue)
+                                .anyMatch(q -> q.stream().anyMatch(
+                                        p -> p.getRole() == PersonRole.STUDENT
+                                ));
+
+
+                        // Move Logic
+                        if (currentTick % speed == 0 && (e.getCurrentFloor() != dest || !e.getPersonList().isEmpty() || (waiting && currentLoad < maxLoad))) {
+                            updateElevatorPosition(elevators, elevatorPanes, e.getId(), Color.GRAY);
+                            e.step(maxFloor);
+                            Color c = e.getRole() == PersonRole.FACULTY ? Color.LIGHTSALMON : Color.LIGHTBLUE;
+                            updateElevatorPosition(elevators, elevatorPanes, e.getId(), c);
+                            //System.out.println("Elevator " + e.getId() + " moved to floor: " + e.getCurrentFloor() + ", direction: " + e.getDirection());
+                        }
+
+                    }
+
                 }
 
 
-                updateElevatorPosition(elevators, elevatorPanes, e.getId(), e.getRole() == PersonRole.FACULTY? Color.LIGHTSALMON:Color.LIGHTBLUE);
+                // Main Customer Spawn Logic
+                int cooldown = spawnCooldown.decrementAndGet();
+                if (cooldown <= 0) {
+                    Person person = spawnManager.spawn();
+                    Pane pane = new Pane();
+                    setPaneDimension(pane, 30);
+                    updatePaneColor(pane, person.getRole() == PersonRole.FACULTY? Color.PINK:Color.CADETBLUE );
+                    person.setPane(pane);
+                    Floor currentFloor = floors[person.getCurrentFloor()];
+                    currentFloor.getPersonQueue().add(person);
+                    Platform.runLater(() -> currentFloor.getHbox().getChildren().add(pane));
+
+                    spawnCooldown.set(spawnDelay);
+                    System.out.println("Spawned Person " + person.getId() + " [" +person.getRole() + "] "
+                            + " at floor:" + person.getCurrentFloor() + " with destination:" + person.getDestination());
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-
-            int cooldown = spawnCooldown.decrementAndGet();
-            if (cooldown <= 0) {
-                Person person = spawnManager.spawn();
-                Pane pane = new Pane();
-                setPaneDimension(pane, 30);
-                updatePaneColor(pane, person.getRole() == PersonRole.FACULTY? Color.PINK:Color.CADETBLUE );
-                HBox currentFloor = floors[person.getCurrentFloor()];
-                Platform.runLater(() -> currentFloor.getChildren().add(pane));
-
-                spawnCooldown.set(spawnDelay);
-                System.out.println("Spawned Person " + person.getId() + " [" +person.getRole() + "] "
-                        + " at floor:" + person.getCurrentFloor() + " with destination:" + person.getDestination());
-            }
-
         };
 
         ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
-        service.scheduleWithFixedDelay(tick, 0, 200, TimeUnit.MILLISECONDS);
+        service.scheduleWithFixedDelay(tick, 5000, 50, TimeUnit.MILLISECONDS);
     }
 
     private void updateElevatorPosition(Elevator[] elevators, Pane[][] elevatorPanes, int elevatorIndex, Color color) {
@@ -189,5 +294,26 @@ public class HelloController {
         pane.setPrefWidth(dimension);
         pane.setMaxWidth(dimension);
     }
+
+    private boolean hasWaitingAbove(int currentFloor, Floor[] floors) {
+        for (int i = currentFloor + 1; i < floors.length; i++) {
+            Queue<Person> queue = floors[i].getPersonQueue();
+            if (queue.stream().anyMatch(p -> p.getRole() == PersonRole.STUDENT)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasWaitingBelow(int currentFloor, Floor[] floors) {
+        for (int i = currentFloor - 1; i >= 0; i--) {
+            Queue<Person> queue = floors[i].getPersonQueue();
+            if (queue.stream().anyMatch(p -> p.getRole() == PersonRole.STUDENT)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 
 }
