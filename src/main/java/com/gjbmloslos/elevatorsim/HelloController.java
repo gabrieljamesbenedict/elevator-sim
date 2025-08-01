@@ -159,26 +159,89 @@ public class HelloController {
                     int maxLoad = e.getCapacity();
                     int dest = e.getCurrentFloor();
 
+                    // Drop off Logic
+                    List<Person> droppingOff = e.getPersonList()
+                            .stream()
+                            .filter(p -> p.getDestination() == e.getCurrentFloor())
+                            .toList();
+                    if (!droppingOff.isEmpty()) {
+                        droppingOff.forEach(p -> {
+                            e.dropOff(p);
+                            System.out.println("Elevator " + e.getId() + " dropped off Person " + p.getId() + ", Capacity:" + e.getPersonList().size() +"/"+e.getCapacity());
+                        });
+                    }
+                    currentLoad = e.getPersonList().size();
+
+
                     if (e.getRole() == PersonRole.FACULTY) {
                         // FACULTY ELEVATORS
 
 
+                        // Pickup Logic
+                        int elevatorFloor = e.getCurrentFloor();
+                        if (!queue.isEmpty() && currentLoad < maxLoad) {
+                            if (queue.peek().getRole() == PersonRole.FACULTY) {
+                                Person peeked = queue.peek();
+
+                                boolean goingSameDirection = e.getDirection() == peeked.getDirection();
+                                boolean atElevatorTerminal = peeked.getCurrentFloor() == maxFloor-1 || peeked.getCurrentFloor() == 0;
+                                boolean changeDirection = e.getDirection()==Direction.UP? !hasWaitingAbove(e.getCurrentFloor(), floors)&&peeked.getDirection()==Direction.DOWN : !hasWaitingBelow(e.getCurrentFloor(), floors)&&peeked.getDirection()==Direction.UP;
+                                boolean hasPersonGoingThere = e.getPersonList().stream().anyMatch(p -> p.getDirection() == e.getDirection());
+                                if (goingSameDirection || atElevatorTerminal || (changeDirection && !hasPersonGoingThere)) {
+                                    Person person = queue.poll();
+                                    e.pickUp(person);
+                                    currentLoad++;
+                                    Platform.runLater(() -> currentFloor.getHbox().getChildren().remove(person.getPane()));
+                                    System.out.println("Elevator " + e.getId() + " picked up Person " + person.getId() + ", Capacity:" + currentLoad + "/" + e.getCapacity());
+                                    if (changeDirection) e.setDirection(e.getDirection() == Direction.UP? Direction.DOWN : Direction.UP);
+                                }
+
+                            } else if (queue.stream().anyMatch(p ->
+                                    p.getRole() == PersonRole.FACULTY
+                            )) {
+
+                                Iterator<Person> it = queue.iterator();
+                                while (it.hasNext()) {
+                                    Person person = it.next();
+                                    boolean isCorrectRole = person.getRole() == PersonRole.FACULTY;
+                                    boolean goingSameDirection = e.getDirection() == person.getDirection();
+                                    boolean atElevatorTerminal = person.getCurrentFloor() == maxFloor-1 || person.getCurrentFloor() == 0;
+                                    boolean changeDirection = e.getDirection()==Direction.UP? !hasWaitingAbove(e.getCurrentFloor(), floors)&&person.getDirection()==Direction.DOWN : !hasWaitingBelow(e.getCurrentFloor(), floors)&&person.getDirection()==Direction.UP;
+                                    boolean hasPersonGoingThere = e.getPersonList().stream().anyMatch(p -> p.getDirection() == e.getDirection());
+                                    if (isCorrectRole && (goingSameDirection || atElevatorTerminal || (changeDirection && !hasPersonGoingThere))) {
+                                        it.remove();
+                                        e.pickUp(person);
+                                        currentLoad++;
+                                        Platform.runLater(() -> currentFloor.getHbox().getChildren().remove(person.getPane()));
+                                        System.out.println("Elevator " + e.getId() + " picked up Person " + person.getId() + ", Capacity:" + currentLoad + "/" + e.getCapacity());
+                                        if (changeDirection) e.setDirection(e.getDirection() == Direction.UP? Direction.DOWN : Direction.UP);
+                                    }
+                                }
+
+                            }
+                        }
+
+
+                        // Search Logic
+                        boolean waiting = Arrays.stream(floors)
+                                .map(Floor::getPersonQueue)
+                                .anyMatch(q -> q.stream().anyMatch(
+                                        p -> p.getRole() == PersonRole.FACULTY
+                                ));
+
+
+                        // Move Logic
+                        if (currentTick % speed == 0 && (!e.getPersonList().isEmpty() || waiting)) {
+                            updateElevatorPosition(elevators, elevatorPanes, e.getId(), Color.GRAY);
+                            e.step(maxFloor);
+                            Color c = e.getRole() == PersonRole.FACULTY ? Color.LIGHTSALMON : Color.LIGHTBLUE;
+                            updateElevatorPosition(elevators, elevatorPanes, e.getId(), c);
+                            //System.out.println("Elevator " + e.getId() + " moved to floor: " + e.getCurrentFloor() + ", direction: " + e.getDirection());
+                        }
+
+
                     } else {
                         // STUDENT ELEVATORS
-
-
-                        // Drop off Logic
-                        List<Person> droppingOff = e.getPersonList()
-                                .stream()
-                                .filter(p -> p.getDestination() == e.getCurrentFloor())
-                                .toList();
-                        if (!droppingOff.isEmpty()) {
-                            droppingOff.forEach(p -> {
-                                e.dropOff(p);
-                                System.out.println("Elevator " + e.getId() + " dropped off Person " + p.getId() + ", Capacity:" + e.getPersonList().size() +"/"+e.getCapacity());
-                            });
-                        }
-                        currentLoad = e.getPersonList().size();
 
 
                         // Pickup Logic
@@ -235,7 +298,7 @@ public class HelloController {
 
 
                         // Move Logic
-                        if (currentTick % speed == 0 && (e.getCurrentFloor() != dest || !e.getPersonList().isEmpty() || (waiting && currentLoad < maxLoad))) {
+                        if (currentTick % speed == 0 && (!e.getPersonList().isEmpty() || waiting)) {
                             updateElevatorPosition(elevators, elevatorPanes, e.getId(), Color.GRAY);
                             e.step(maxFloor);
                             Color c = e.getRole() == PersonRole.FACULTY ? Color.LIGHTSALMON : Color.LIGHTBLUE;

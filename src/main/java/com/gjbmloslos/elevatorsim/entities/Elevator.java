@@ -14,7 +14,8 @@ public class Elevator implements ElevatorComponent {
     private PersonRole role;
     private int capacity;
     private int currentFloor;
-    private Direction direction;
+    private
+    Direction direction;
     private ArrayList<Person> personList;
 
     public Elevator(int id, PersonRole role, int capacity, int currentFloor) {
