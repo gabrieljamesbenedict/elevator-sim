@@ -15,9 +15,14 @@
       </VBox>
    </center>
    <top>
-      <HBox BorderPane.alignment="CENTER">
+      <HBox spacing="10.0" BorderPane.alignment="CENTER">
          <children>
-            <Label fx:id="tickCounter" text="Ticks: 000 " />
+            <Label fx:id="tickCounter" text="Ticks:" />
+            <Label fx:id="meanWaitingTime" text="Mean Waiting Time:" />
+            <Label fx:id="maxWaitingTime" text="Max Waiting Time:" />
+            <Label fx:id="totalSpawned" text="Total Spawned:" />
+            <Label fx:id="totalServed" text="Total Served:" />
+            <Label fx:id="currentAmount" text="Current Amount:" />
          </children>
          <BorderPane.margin>
             <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />

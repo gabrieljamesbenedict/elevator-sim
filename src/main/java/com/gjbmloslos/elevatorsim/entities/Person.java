@@ -1,10 +1,11 @@
 package com.gjbmloslos.elevatorsim.entities;
 
+import com.gjbmloslos.elevatorsim.components.StatisticsComponent;
 import com.gjbmloslos.elevatorsim.constants.Direction;
 import com.gjbmloslos.elevatorsim.constants.PersonRole;
 import javafx.scene.layout.Pane;
 
-public class Person {
+public class Person extends StatisticsComponent {
 
     private int id;
     private PersonRole role;

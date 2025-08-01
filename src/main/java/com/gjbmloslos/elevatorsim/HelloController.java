@@ -7,30 +7,26 @@ import com.gjbmloslos.elevatorsim.constants.SimulationConfig;
 import com.gjbmloslos.elevatorsim.entities.Elevator;
 import com.gjbmloslos.elevatorsim.entities.Floor;
 import com.gjbmloslos.elevatorsim.entities.Person;
-import com.gjbmloslos.elevatorsim.manager.ElevatorManager;
 import com.gjbmloslos.elevatorsim.manager.PersonSpawnManager;
-import javafx.animation.TranslateTransition;
+import com.gjbmloslos.elevatorsim.manager.StatisticsManager;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import javafx.util.Duration;
 
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.IntStream;
 
 public class HelloController {
 
     PersonSpawnManager spawnManager;
-    ElevatorManager elevatorManager;
+    StatisticsManager statisticsManager;
 
     Floor[] floors;
     Elevator[] elevators;
@@ -43,13 +39,28 @@ public class HelloController {
     Label tickCounter;
 
     @FXML
+    Label meanWaitingTime;
+
+    @FXML
+    Label maxWaitingTime;
+
+    @FXML
+    Label totalSpawned;
+
+    @FXML
+    Label totalServed;
+
+    @FXML
+    Label currentAmount;
+
+    @FXML
     public void initialize () {
 
         generateFloors();
         generateElevators();
 
         spawnManager = new PersonSpawnManager();
-        elevatorManager = new ElevatorManager(elevators);
+        statisticsManager = new StatisticsManager();
 
         startSimulation();
 
@@ -154,7 +165,14 @@ public class HelloController {
         Runnable tick = () -> {
             try {
                 int currentTick = tickNum.incrementAndGet();
-                Platform.runLater(()-> tickCounter.setText("Ticks: " + currentTick));
+                Platform.runLater(()-> {
+                    tickCounter.setText(String.format("Ticks: %5d", currentTick));
+                    meanWaitingTime.setText(String.format("Mean Waiting Time: %5.2f", statisticsManager.getAveWaitingTime()));
+                    maxWaitingTime.setText(String.format("Max Waiting Time: %5.2f", statisticsManager.getMaxWaitingTime()));
+                    totalSpawned.setText(String.format("Total Spawned: %5d", statisticsManager.getPersonSpawnedAmount()));
+                    totalServed.setText(String.format("Total Served: %5d", statisticsManager.getPersonServedAmount()));
+                    currentAmount.setText(String.format("Current Amount: %5d", statisticsManager.getPersonCurrentAmount()));
+                });
 
 
                 // Main Elevator Logic
@@ -173,6 +191,7 @@ public class HelloController {
                     if (!droppingOff.isEmpty()) {
                         droppingOff.forEach(p -> {
                             e.dropOff(p);
+                            statisticsManager.trackServedPerson();
                             System.out.println("Elevator " + e.getId() + " dropped off Person " + p.getId() + ", Capacity:" + e.getPersonList().size() +"/"+e.getCapacity());
                         });
                     }
@@ -211,6 +230,7 @@ public class HelloController {
                                     Person person = queue.poll();
                                     e.pickUp(person);
                                     currentLoad++;
+                                    statisticsManager.removeStatisticsComponent(person);
                                     Platform.runLater(() -> currentFloor.getHbox().getChildren().remove(person.getPane()));
                                     System.out.println("Elevator " + e.getId() + " picked up Person " + person.getId() + ", Capacity:" + currentLoad + "/" + e.getCapacity());
                                     if (changeDirection) e.setDirection(e.getDirection() == Direction.UP? Direction.DOWN : Direction.UP);
@@ -232,6 +252,7 @@ public class HelloController {
                                         it.remove();
                                         e.pickUp(person);
                                         currentLoad++;
+                                        statisticsManager.removeStatisticsComponent(person);
                                         Platform.runLater(() -> currentFloor.getHbox().getChildren().remove(person.getPane()));
                                         System.out.println("Elevator " + e.getId() + " picked up Person " + person.getId() + ", Capacity:" + currentLoad + "/" + e.getCapacity());
                                         if (changeDirection) e.setDirection(e.getDirection() == Direction.UP? Direction.DOWN : Direction.UP);
@@ -270,6 +291,7 @@ public class HelloController {
                                     Person person = queue.poll();
                                     e.pickUp(person);
                                     currentLoad++;
+                                    statisticsManager.removeStatisticsComponent(person);
                                     Platform.runLater(() -> currentFloor.getHbox().getChildren().remove(person.getPane()));
                                     System.out.println("Elevator " + e.getId() + " picked up Person " + person.getId() + ", Capacity:" + currentLoad + "/" + e.getCapacity());
                                     if (changeDirection) e.setDirection(e.getDirection() == Direction.UP? Direction.DOWN : Direction.UP);
@@ -291,6 +313,7 @@ public class HelloController {
                                         it.remove();
                                         e.pickUp(person);
                                         currentLoad++;
+                                        statisticsManager.removeStatisticsComponent(person);
                                         Platform.runLater(() -> currentFloor.getHbox().getChildren().remove(person.getPane()));
                                         System.out.println("Elevator " + e.getId() + " picked up Person " + person.getId() + ", Capacity:" + currentLoad + "/" + e.getCapacity());
                                         if (changeDirection) e.setDirection(e.getDirection() == Direction.UP? Direction.DOWN : Direction.UP);
@@ -329,6 +352,8 @@ public class HelloController {
                     Platform.runLater(() -> currentFloor.getHbox().getChildren().add(pane));
 
                     spawnCooldown.set(spawnDelay);
+                    statisticsManager.addStatisticsComponent(person);
+                    statisticsManager.trackSpawnedPerson();
                     System.out.println("Spawned Person " + person.getId() + " [" +person.getRole() + "] "
                             + " at floor:" + person.getCurrentFloor() + " with destination:" + person.getDestination());
 
@@ -343,6 +368,8 @@ public class HelloController {
                         System.out.println("Elevator " + assigned.getId() + " assigned to Person " + person.getId());
                     }
                 }
+
+                statisticsManager.getAverageWaitingTime();
 
             } catch (Exception e) {
                 e.printStackTrace();
